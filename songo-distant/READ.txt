@@ -1,0 +1,317 @@
+# Projet Songo
+
+## 1. Présentation du projet
+
+Ce projet est une implémentation web du jeu du Songo. Le Songo est un jeu traditionnel de semailles joué à deux joueurs. Le plateau est composé de deux camps : le camp NORD et le camp SUD. Chaque camp possède sept cases, et chaque case contient cinq graines au début de la partie.
+
+Le but du jeu est de capturer le plus grand nombre de graines possible. Un joueur gagne lorsqu’il atteint au moins quarante graines capturées.
+
+Le projet contient deux versions :
+
+1. Une version locale, où les deux joueurs jouent sur la même page web.
+2. Une version distante, où les deux joueurs peuvent jouer depuis deux navigateurs différents grâce à Ajax, PHP et MySQL.
+
+---
+
+## 2. Technologies utilisées
+
+### Version locale
+
+* HTML
+* CSS
+* JavaScript
+
+### Version distante
+
+* HTML
+* CSS
+* JavaScript
+* Ajax avec fetch()
+* PHP
+* MySQL
+* Serveur local Apache
+
+---
+
+## 3. Organisation du projet
+
+Le projet est organisé en deux dossiers principaux :
+
+```txt
+songo-local/
+├── index.html
+├── style.css
+└── script.js
+```
+
+```txt
+songo-distant/
+├── api/
+│   ├── db.php
+│   ├── get_state.php
+│   ├── play.php
+│   └── reset.php
+├── database/
+│   └── init.sql
+├── index.html
+├── style.css
+├── app.js
+└── README.txt
+```
+
+---
+
+## 4. Fonctionnement général du jeu
+
+Au début de la partie, chaque case contient cinq graines.
+
+Les joueurs jouent chacun leur tour. Le joueur courant choisit une case de son camp. Le programme prend toutes les graines de cette case, vide la case, puis distribue les graines une par une dans les cases suivantes.
+
+Le sens de semis appliqué est le suivant :
+
+* dans son propre camp, le joueur sème de la case 7 vers la case 1 ;
+* dans le camp adverse, il continue de la case 1 vers la case 7.
+
+Une capture est possible si la dernière graine tombe dans le camp adverse et que la case contient, après le dépôt, deux, trois ou quatre graines.
+
+Le programme prend aussi en compte :
+
+* la prise à la chaîne ;
+* l’interdiction de jouer une case vide ;
+* l’interdiction de vider complètement le camp adverse ;
+* la règle de solidarité ;
+* l’interdiction de semer seulement une ou deux graines chez l’adversaire à partir de la case 7, sauf en cas de solidarité ;
+* la fin de partie lorsqu’un joueur atteint quarante graines ;
+* la fin de partie lorsqu’il reste moins de dix graines sur le plateau.
+
+---
+
+## 5. Comment lancer la version locale
+
+### Étape 1 : copier le dossier dans Apache
+
+Le dossier `songo-local` doit être placé dans :
+
+```txt
+/var/www/html/
+```
+
+Le chemin final doit donc être :
+
+```txt
+/var/www/html/songo-local
+```
+
+### Étape 2 : démarrer Apache
+
+Dans le terminal :
+
+```bash
+sudo systemctl start apache2
+```
+
+### Étape 3 : ouvrir la version locale
+
+Dans le navigateur :
+
+```txt
+http://localhost/songo-local/
+```
+
+La version locale fonctionne uniquement avec HTML, CSS et JavaScript. Elle ne nécessite pas de base de données.
+
+---
+
+## 6. Comment lancer la version distante
+
+### Étape 1 : copier le dossier dans Apache
+
+Le dossier `songo-distant` doit être placé dans :
+
+```txt
+/var/www/html/
+```
+
+Le chemin final doit donc être :
+
+```txt
+/var/www/html/songo-distant
+```
+
+### Étape 2 : démarrer Apache
+
+Dans le terminal :
+
+```bash
+sudo systemctl start apache2
+```
+
+### Étape 3 : démarrer MySQL
+
+Dans le terminal :
+
+```bash
+sudo systemctl start mysql
+```
+
+### Étape 4 : importer la base de données
+
+Se placer dans le dossier du projet distant :
+
+```bash
+cd /var/www/html/songo-distant
+```
+
+Importer le fichier SQL :
+
+```bash
+sudo mysql < database/init.sql
+```
+
+Cette commande crée la base de données `songo_db` et la table nécessaire au fonctionnement du jeu.
+
+### Étape 5 : créer l’utilisateur MySQL du projet
+
+Entrer dans MySQL :
+
+```bash
+sudo mysql
+```
+
+Puis exécuter :
+
+```sql
+CREATE USER IF NOT EXISTS 'songo_user'@'localhost' IDENTIFIED BY 'songo_password';
+GRANT ALL PRIVILEGES ON songo_db.* TO 'songo_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+Cet utilisateur est utilisé par le fichier `api/db.php` pour connecter PHP à MySQL.
+
+### Étape 6 : vérifier la connexion à la base de données
+
+Dans le navigateur, ouvrir :
+
+```txt
+http://localhost/songo-distant/api/get_state.php
+```
+
+Si tout fonctionne, une réponse JSON doit s’afficher avec :
+
+```txt
+success: true
+```
+
+et l’état actuel du jeu.
+
+### Étape 7 : ouvrir la version distante
+
+Dans le navigateur :
+
+```txt
+http://localhost/songo-distant/
+```
+
+Pour simuler deux joueurs distants :
+
+1. Ouvrir un premier onglet avec l’adresse :
+
+```txt
+http://localhost/songo-distant/
+```
+
+2. Choisir le joueur SUD dans la liste déroulante.
+
+3. Ouvrir un deuxième onglet avec la même adresse :
+
+```txt
+http://localhost/songo-distant/
+```
+
+4. Choisir le joueur NORD dans la liste déroulante.
+
+Quand un joueur joue dans un onglet, l’autre onglet se met automatiquement à jour grâce à Ajax.
+
+---
+
+## 7. Fonctionnement technique de la version distante
+
+La version distante utilise Ajax pour communiquer avec le serveur sans recharger la page.
+
+Le fichier `app.js` envoie des requêtes aux fichiers PHP présents dans le dossier `api`.
+
+Les principaux fichiers PHP sont :
+
+* `get_state.php` : récupère l’état actuel du jeu depuis MySQL ;
+* `play.php` : reçoit le coup joué, applique les règles du jeu et met à jour la base de données ;
+* `reset.php` : réinitialise la partie ;
+* `db.php` : contient la connexion à la base de données MySQL.
+
+La synchronisation entre les deux joueurs se fait automatiquement toutes les 0,5 seconde grâce à JavaScript.
+
+---
+
+## 8. Base de données
+
+La base de données utilisée est :
+
+```txt
+songo_db
+```
+
+Elle contient une table principale :
+
+```txt
+games
+```
+
+Cette table stocke :
+
+* les cases du camp NORD ;
+* les cases du camp SUD ;
+* le score de NORD ;
+* le score de SUD ;
+* le joueur courant ;
+* le gagnant ;
+* l’état de fin de partie ;
+* le message affiché aux joueurs.
+
+Les cases des deux camps sont stockées sous forme JSON dans MySQL.
+
+---
+
+## 9. Réinitialiser la partie
+
+Pour réinitialiser la partie depuis le navigateur :
+
+```txt
+http://localhost/songo-distant/api/reset.php
+```
+
+Ou cliquer directement sur le bouton :
+
+```txt
+Nouvelle partie
+```
+
+dans l’interface du jeu.
+
+---
+
+## 10. Remarques importantes
+
+* Le projet a été développé et testé sous Ubuntu.
+* Apache sert les fichiers depuis le dossier `/var/www/html`.
+* La version locale ne nécessite pas MySQL.
+* La version distante nécessite Apache, PHP et MySQL.
+* Le fichier `database/init.sql` doit être importé avant d’utiliser la version distante.
+* Si la connexion MySQL échoue, vérifier les identifiants dans le fichier `api/db.php`.
+
+---
+
+## 11. Auteur
+
+Nom : [Youmbi chloe]
+Classe : [L2]
+Année académique : [2025-2026]

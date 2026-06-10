@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu du Songo - Version Locale</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main class="container">
+        <h1>Jeu du Songo</h1>
+        <p class="subtitle">Version locale : deux joueurs sur le même ordinateur</p>
+
+        <section class="info-panel">
+            <div class="score-card">
+                <h2>Score NORD</h2>
+                <p id="scoreNord">0</p>
+            </div>
+
+            <div class="turn-card">
+                <h2>Tour actuel</h2>
+                <p id="currentPlayer">SUD</p>
+            </div>
+
+            <div class="score-card">
+                <h2>Score SUD</h2>
+                <p id="scoreSud">0</p>
+            </div>
+        </section>
+
+        <section class="board-wrapper">
+            <div class="player-label north-label">Camp NORD</div>
+
+            <div class="case-numbers north-numbers">
+                <span>1</span>
+                <span>2</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+                <span>6</span>
+                <span>7</span>
+            </div>
+
+            <div id="northRow" class="board-row north-row"></div>
+
+            <div id="southRow" class="board-row south-row"></div>
+
+            <div class="case-numbers south-numbers">
+                <span>1</span>
+                <span>2</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+                <span>6</span>
+                <span>7</span>
+            </div>
+
+            <div class="player-label south-label">Camp SUD</div>
+        </section>
+
+        <section class="rules-help">
+         <h2>Rappel du sens de semis</h2>
+         <p>
+              Dans son propre camp, le joueur sème de la case 7 vers la case 1.
+               Ensuite, il continue dans le camp adverse de la case 1 vers la case 7.
+          </p>
+          <p>
+              Une capture est possible si la dernière graine tombe dans le camp adverse
+              et que la case contient 2, 3 ou 4 graines.
+          </p>
+        </section>  
+
+        <section class="message-box">
+            <p id="message">SUD commence la partie. Choisissez une case de votre camp.</p>
+        </section>
+
+        <section class="actions">
+            <button id="resetButton">Nouvelle partie</button>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
