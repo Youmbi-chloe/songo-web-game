@@ -123,8 +123,10 @@ function playMove(player, pitIndex) {
         return;
     }
 
-    const result = sowSeeds(player, pitIndex);
-    const capturedSeeds = captureSeeds(player, result.lastPosition, result.route);
+    const selectedSeeds = playerPits[pitIndex];
+
+    const sowResult = sowSeeds(player, pitIndex);
+    const capturedSeeds = captureSeeds(player, sowResult.lastPit, selectedSeeds);
 
     if (player === "SUD") {
         game.scoreSud += capturedSeeds;
@@ -158,15 +160,6 @@ function validateMove(player, pitIndex) {
     const seedsGiven = countSeedsGivenToOpponent(player, pitIndex);
     const opponentIsEmpty = sumArray(opponentPits) === 0;
 
-    /*
-        Règle de solidarité :
-        Si l'adversaire n'a plus aucune graine, on doit le nourrir.
-        Si on peut lui donner au moins 7 graines, il faut le faire.
-        Sinon, on doit lui donner le maximum possible.
-
-        Important :
-        Dans ce cas, la solidarité est prioritaire sur l'interdit de la case 7.
-    */
     if (opponentIsEmpty) {
         const allPossibleMoves = getNonEmptyPits(player);
         const possibleGifts = allPossibleMoves.map(index => countSeedsGivenToOpponent(player, index));
@@ -200,11 +193,6 @@ function validateMove(player, pitIndex) {
         };
     }
 
-    /*
-        Règle spéciale de la case 7 :
-        Il est interdit, avec sa case 7, de semer seulement 1 ou 2 graines chez l'adversaire.
-        Mais cette interdiction ne s'applique pas si le joueur est obligé de jouer par solidarité.
-    */
     if (pitIndex === 6 && (seedsGiven === 1 || seedsGiven === 2)) {
         return {
             valid: false,
@@ -254,76 +242,79 @@ function sowSeeds(player, pitIndex) {
 
     return {
         route: route,
-        lastPosition: lastPosition
+        lastPosition: lastPosition,
+        lastPit: route[lastPosition]
     };
 }
 
-function captureSeeds(player, lastPosition, route) {
+function captureSeeds(player, lastPit, seedsPlayed) {
     const opponent = getOpponent(player);
-    const lastPit = route[lastPosition];
 
     if (lastPit.player !== opponent) {
         return 0;
     }
 
     /*
-        Exception :
-        Si la dernière graine tombe directement dans la case 1 de l'adversaire,
-        on ne commence pas une prise normale dans cette case.
+        Règle spéciale :
+        Si la dernière graine tombe dans la case 1 adverse
+        après au moins un tour complet, on ne prend qu'une seule graine :
+        la dernière graine déposée.
+    */
+    if (lastPit.index === 0 && seedsPlayed >= 14) {
+        const currentValue = getPitValue(opponent, 0);
+
+        if (currentValue > 0) {
+            setPitValue(opponent, 0, currentValue - 1);
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /*
+        Règle normale :
+        Si la dernière graine tombe directement dans la case 1 adverse
+        sans tour complet, il n'y a pas de capture.
     */
     if (lastPit.index === 0) {
         return 0;
     }
 
-    let positionsToCapture = [];
-    let currentPosition = lastPosition;
+    const capturedIndexes = [];
 
-    while (true) {
-        const currentPit = route[currentPosition];
+    for (let i = lastPit.index; i >= 0; i--) {
+        const value = getPitValue(opponent, i);
 
-        if (currentPit.player !== opponent) {
+        if (value === 2 || value === 3 || value === 4) {
+            capturedIndexes.push(i);
+        } else {
             break;
-        }
-
-        const seedsInPit = getPitValue(currentPit.player, currentPit.index);
-
-        if (seedsInPit < 2 || seedsInPit > 4) {
-            break;
-        }
-
-        positionsToCapture.push({
-            player: currentPit.player,
-            index: currentPit.index,
-            seeds: seedsInPit
-        });
-
-        currentPosition = currentPosition - 1;
-
-        if (currentPosition < 0) {
-            currentPosition = route.length - 1;
         }
     }
 
-    if (positionsToCapture.length === 0) {
+    if (capturedIndexes.length === 0) {
         return 0;
     }
 
-    const opponentPits = getPlayerPits(opponent);
-    const opponentTotalBeforeCapture = sumArray(opponentPits);
-    const totalCaptured = positionsToCapture.reduce((total, pit) => total + pit.seeds, 0);
+    const opponentSeedsBeforeCapture = sumArray(getPlayerPits(opponent));
+
+    let totalCaptured = 0;
+
+    for (const index of capturedIndexes) {
+        totalCaptured += getPitValue(opponent, index);
+    }
 
     /*
-        Règle :
-        On ne doit pas vider complètement le camp adverse.
-        Si la capture vide tout le camp adverse, la capture est annulée.
+        On interdit une capture qui vide complètement
+        le camp adverse.
     */
-    if (opponentTotalBeforeCapture - totalCaptured === 0) {
+    if (opponentSeedsBeforeCapture - totalCaptured === 0) {
         return 0;
     }
 
-    positionsToCapture.forEach(function (pit) {
-        setPitValue(pit.player, pit.index, 0);
-    });
+    for (const index of capturedIndexes) {
+        setPitValue(opponent, index, 0);
+    }
 
     return totalCaptured;
 }
@@ -373,7 +364,6 @@ function checkIfCurrentPlayerCanPlay() {
     if (sumArray(currentPits) === 0) {
         game.gameOver = true;
 
-        const opponent = getOpponent(game.currentPlayer);
         collectRemainingSeeds();
 
         if (game.scoreSud > game.scoreNord) {

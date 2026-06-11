@@ -263,7 +263,7 @@ function sowSeeds(&$game, $player, $pitIndex) {
     ];
 }
 
-function captureSeeds(&$game, $player, $lastPosition, $route) {
+function captureSeeds(&$game, $player, $lastPosition, $route, $seedsPlayed) {
     $opponent = getOpponent($player);
     $lastPit = $route[$lastPosition];
 
@@ -271,6 +271,28 @@ function captureSeeds(&$game, $player, $lastPosition, $route) {
         return 0;
     }
 
+    /*
+        Règle spéciale :
+        Si la dernière graine tombe dans la case 1 adverse
+        après au moins un tour complet, le joueur prend seulement
+        la dernière graine déposée.
+    */
+    if ($lastPit["index"] === 0 && $seedsPlayed >= 14) {
+        $currentValue = getPitValue($game, $opponent, 0);
+
+        if ($currentValue > 0) {
+            setPitValue($game, $opponent, 0, $currentValue - 1);
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /*
+        Règle normale :
+        Si la dernière graine tombe directement dans la case 1 adverse
+        sans tour complet, il n'y a pas de capture.
+    */
     if ($lastPit["index"] === 0) {
         return 0;
     }
@@ -317,6 +339,11 @@ function captureSeeds(&$game, $player, $lastPosition, $route) {
         $totalCaptured += $pit["seeds"];
     }
 
+    /*
+        Règle :
+        On ne doit pas vider complètement le camp adverse.
+        Si la capture vide tout le camp adverse, la capture est annulée.
+    */
     if ($opponentTotalBeforeCapture - $totalCaptured === 0) {
         return 0;
     }
@@ -514,8 +541,10 @@ try {
         exit;
     }
 
+    $selectedSeeds = getPitValue($game, $player, $pitIndex);
+
     $result = sowSeeds($game, $player, $pitIndex);
-    $capturedSeeds = captureSeeds($game, $player, $result["lastPosition"], $result["route"]);
+    $capturedSeeds = captureSeeds($game, $player, $result["lastPosition"], $result["route"], $selectedSeeds);
 
     if ($player === "SUD") {
         $game["scoreSud"] += $capturedSeeds;
